@@ -92,12 +92,19 @@ export default function Dashboard() {
           <p className="mt-4 text-sm text-red-300">Error: {board.error}</p>
         )}
         {board.status === "ok" && counts && (
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <Stat label="Backlog" value={counts.backlog} />
-            <Stat label="In progress" value={counts.inProgress} />
-            <Stat label="Done" value={counts.done} />
-            <div className="col-span-3 mt-2 text-xs text-zinc-400">
-              Updated: {counts.updatedAt || "(unknown)"}
+          <div className="mt-4">
+            <div className="grid grid-cols-3 gap-3">
+              <Stat label="Backlog" value={counts.backlog} />
+              <Stat label="In progress" value={counts.inProgress} />
+              <Stat label="Done" value={counts.done} />
+            </div>
+
+            <div className="mt-2 text-xs text-zinc-400">Updated: {counts.updatedAt || "(unknown)"}</div>
+
+            <div className="mt-5 grid gap-4">
+              <BoardSection title="In progress" items={board.data.queue?.inProgress} />
+              <BoardSection title="Backlog" items={board.data.queue?.backlog} />
+              <BoardSection title="Done" items={board.data.queue?.done} />
             </div>
           </div>
         )}
@@ -127,5 +134,68 @@ function Stat({ label, value }: { label: string; value: number }) {
       <div className="text-xs text-zinc-400">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
     </div>
+  );
+}
+
+function BoardSection({ title, items }: { title: string; items?: BoardItem[] }) {
+  const list = items ?? [];
+
+  return (
+    <section className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-zinc-100">{title}</h3>
+        <span className="text-xs tabular-nums text-zinc-400">{list.length}</span>
+      </div>
+
+      {list.length === 0 ? (
+        <p className="mt-3 text-sm text-zinc-400">No items.</p>
+      ) : (
+        <ul className="mt-3 grid gap-2">
+          {list.map((it, idx) => {
+            const key = `${it.ticketId || "item"}-${idx}`;
+            return (
+              <li key={key} className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-zinc-200">
+                        {it.ticketId || "(no id)"}
+                      </span>
+                      {it.role && (
+                        <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300">
+                          {it.role}
+                        </span>
+                      )}
+                      {it.status && (
+                        <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300">
+                          {it.status}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-1 truncate text-sm text-zinc-100">
+                      {it.title || "(no title)"}
+                    </div>
+
+                    {it.updatedAt && <div className="mt-1 text-xs text-zinc-500">Updated: {it.updatedAt}</div>}
+                  </div>
+
+                  {typeof it.prUrl === "string" && it.prUrl.length > 0 && (
+                    <a
+                      href={it.prUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800"
+                    >
+                      PR
+                    </a>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
