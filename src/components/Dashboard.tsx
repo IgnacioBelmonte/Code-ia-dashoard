@@ -30,11 +30,9 @@ type Board = {
 
 export default function Dashboard() {
   const [board, setBoard] = useState<ApiState<Board>>({ status: "idle" });
-  const [agents, setAgents] = useState<ApiState<{ raw: string }>>({ status: "idle" });
 
   async function load() {
     setBoard({ status: "loading" });
-    setAgents({ status: "loading" });
 
     try {
       const r = await fetch("/api/board", { cache: "no-store" });
@@ -44,16 +42,6 @@ export default function Dashboard() {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       setBoard({ status: "error", error: message });
-    }
-
-    try {
-      const r = await fetch("/api/agents", { cache: "no-store" });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j?.error?.message || "Agents fetch failed");
-      setAgents({ status: "ok", data: j.data });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      setAgents({ status: "error", error: message });
     }
   }
 
@@ -75,7 +63,7 @@ export default function Dashboard() {
   }, [board]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-6">
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Board</h2>
@@ -88,9 +76,8 @@ export default function Dashboard() {
         </div>
 
         {board.status === "loading" && <p className="mt-4 text-sm text-zinc-300">Loading…</p>}
-        {board.status === "error" && (
-          <p className="mt-4 text-sm text-red-300">Error: {board.error}</p>
-        )}
+        {board.status === "error" && <p className="mt-4 text-sm text-red-300">Error: {board.error}</p>}
+
         {board.status === "ok" && counts && (
           <div className="mt-4">
             <div className="grid grid-cols-3 gap-3">
@@ -107,21 +94,6 @@ export default function Dashboard() {
               <BoardSection title="Done" items={board.data.queue?.done} />
             </div>
           </div>
-        )}
-      </section>
-
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
-        <h2 className="text-lg font-semibold">Agents</h2>
-        <p className="mt-1 text-xs text-zinc-400">From local `openclaw status`.</p>
-
-        {agents.status === "loading" && <p className="mt-4 text-sm text-zinc-300">Loading…</p>}
-        {agents.status === "error" && (
-          <p className="mt-4 text-sm text-red-300">Error: {agents.error}</p>
-        )}
-        {agents.status === "ok" && (
-          <pre className="mt-4 max-h-[420px] overflow-auto rounded-lg bg-zinc-950/60 p-3 text-xs text-zinc-200">
-{agents.data.raw}
-          </pre>
         )}
       </section>
     </div>
