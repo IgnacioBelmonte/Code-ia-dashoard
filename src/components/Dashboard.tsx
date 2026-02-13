@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type ApiState<T> =
   | { status: "idle" | "loading"; data?: undefined; error?: undefined }
@@ -42,11 +42,14 @@ type Board = {
   };
 };
 
+type TabKey = "runtime" | "inProgress" | "backlog" | "done";
+
 export default function Dashboard() {
   const [board, setBoard] = useState<ApiState<Board>>({ status: "idle" });
+  const [tab, setTab] = useState<TabKey>("inProgress");
 
   async function load() {
-    setBoard({ status: "loading" });
+    setBoard((prev) => ({ status: "loading", data: prev.status === "ok" ? prev.data : undefined }));
 
     try {
       const r = await fetch("/api/board", { cache: "no-store" });
@@ -77,40 +80,92 @@ export default function Dashboard() {
   }, [board]);
 
   return (
-    <div className="grid gap-6">
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Board</h2>
-          <button
-            onClick={load}
-            className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm hover:bg-zinc-800"
-          >
-            Refresh
-          </button>
+    <div className="grid gap-4">
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 sm:p-5">
+        <div className="sticky top-2 z-10 -mx-2 mb-4 rounded-lg border border-zinc-800 bg-zinc-950/90 px-2 py-2 backdrop-blur sm:mx-0 sm:px-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold sm:text-lg">Board · Tablero</h2>
+            <button
+              onClick={load}
+              className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs hover:bg-zinc-800 sm:text-sm"
+            >
+              Refresh · Actualizar
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-zinc-400">Auto-refresh cada 15s · Carga ligera para Raspberry Pi</p>
         </div>
 
-        {board.status === "loading" && <p className="mt-4 text-sm text-zinc-300">Loading…</p>}
-        {board.status === "error" && <p className="mt-4 text-sm text-red-300">Error: {board.error}</p>}
+        {board.status === "loading" && <LoadingSkeleton />}
+        {board.status === "error" && <p className="mt-2 text-sm text-red-300">Error: {board.error}</p>}
 
         {board.status === "ok" && counts && (
-          <div className="mt-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Stat label="Backlog" value={counts.backlog} />
-              <Stat label="In progress" value={counts.inProgress} />
-              <Stat label="Done" value={counts.done} />
+          <div className="mt-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Stat label="Backlog · Pendiente" value={counts.backlog} />
+              <Stat label="In progress · En curso" value={counts.inProgress} />
+              <Stat label="Done · Hecho" value={counts.done} />
             </div>
 
-            <div className="mt-2 text-xs text-zinc-400">Updated: {counts.updatedAt || "(unknown)"}</div>
+            <div className="mt-2 text-xs text-zinc-400">Updated · Actualizado: {counts.updatedAt || "(unknown)"}</div>
 
-            <div className="mt-5 grid gap-4">
-              <RuntimeSection runtime={board.data.runtime} />
-              <BoardSection title="In progress" items={board.data.queue?.inProgress} />
-              <BoardSection title="Backlog" items={board.data.queue?.backlog} />
-              <BoardSection title="Done" items={board.data.queue?.done} />
+            <div className="mt-4 flex flex-wrap gap-2">
+              <TabButton active={tab === "runtime"} onClick={() => setTab("runtime")}>
+                Runtime
+              </TabButton>
+              <TabButton active={tab === "inProgress"} onClick={() => setTab("inProgress")}>
+                In progress · En curso
+              </TabButton>
+              <TabButton active={tab === "backlog"} onClick={() => setTab("backlog")}>
+                Backlog · Pendiente
+              </TabButton>
+              <TabButton active={tab === "done"} onClick={() => setTab("done")}>
+                Done · Hecho
+              </TabButton>
+            </div>
+
+            <div className="mt-4">
+              {tab === "runtime" && <RuntimeSection runtime={board.data.runtime} />}
+              {tab === "inProgress" && <BoardSection title="In progress · En curso" items={board.data.queue?.inProgress} />}
+              {tab === "backlog" && <BoardSection title="Backlog · Pendiente" items={board.data.queue?.backlog} />}
+              {tab === "done" && <BoardSection title="Done · Hecho" items={board.data.queue?.done} />}
             </div>
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-md border px-3 py-1.5 text-xs sm:text-sm ${
+        active ? "border-zinc-500 bg-zinc-800 text-zinc-100" : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="mt-2 grid gap-3 animate-pulse">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="h-20 rounded-lg bg-zinc-900" />
+        <div className="h-20 rounded-lg bg-zinc-900" />
+        <div className="h-20 rounded-lg bg-zinc-900" />
+      </div>
+      <div className="h-40 rounded-lg bg-zinc-900" />
     </div>
   );
 }
@@ -136,11 +191,9 @@ function RuntimeSection({ runtime }: { runtime?: BoardRuntime }) {
 
   return (
     <section className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-zinc-100">Runtime URLs</h3>
-      </div>
+      <h3 className="text-sm font-semibold text-zinc-100">Runtime URLs</h3>
 
-      <div className="mt-3 grid gap-4 lg:grid-cols-2">
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <RuntimeCard
           title="MAIN"
           items={[
@@ -160,7 +213,7 @@ function RuntimeSection({ runtime }: { runtime?: BoardRuntime }) {
       </div>
 
       <p className="mt-3 text-xs text-zinc-500">
-        Tip: the DEV tunnel is temporary (trycloudflare). If it changes, update the Spotify redirect URI.
+        Tip · Consejo: el túnel DEV (trycloudflare) es temporal. Si cambia, actualiza la redirect URI de Spotify.
       </p>
     </section>
   );
@@ -180,7 +233,7 @@ function RuntimeCard({
       <div className="text-xs font-semibold tracking-wide text-zinc-300">{title}</div>
 
       {visible.length === 0 ? (
-        <p className="mt-2 text-sm text-zinc-400">No data.</p>
+        <p className="mt-2 text-sm text-zinc-400">No data · Sin datos.</p>
       ) : (
         <ul className="mt-3 grid gap-2">
           {visible.map((it) => (
@@ -218,7 +271,7 @@ function CopyButton({ value }: { value: string }) {
       className="shrink-0 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800"
       aria-label="Copy to clipboard"
     >
-      {copied ? "Copied" : "Copy"}
+      {copied ? "Copied · Copiado" : "Copy · Copiar"}
     </button>
   );
 }
@@ -234,7 +287,7 @@ function BoardSection({ title, items }: { title: string; items?: BoardItem[] }) 
       </div>
 
       {list.length === 0 ? (
-        <p className="mt-3 text-sm text-zinc-400">No items.</p>
+        <p className="mt-3 text-sm text-zinc-400">No items · Sin elementos.</p>
       ) : (
         <ul className="mt-3 grid gap-2">
           {list.map((it, idx) => {
@@ -248,23 +301,17 @@ function BoardSection({ title, items }: { title: string; items?: BoardItem[] }) 
                         {it.ticketId || "(no id)"}
                       </span>
                       {it.role && (
-                        <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300">
-                          {it.role}
-                        </span>
+                        <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300">{it.role}</span>
                       )}
                       {it.status && (
-                        <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300">
-                          {it.status}
-                        </span>
+                        <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300">{it.status}</span>
                       )}
                     </div>
 
-                    <div className="mt-1 text-sm text-zinc-100 sm:text-[15px]">
-                      {it.title || "(no title)"}
-                    </div>
+                    <div className="mt-1 text-sm text-zinc-100 sm:text-[15px]">{it.title || "(no title)"}</div>
 
                     {it.updatedAt && (
-                      <div className="mt-1 break-words text-xs text-zinc-500">Updated: {it.updatedAt}</div>
+                      <div className="mt-1 break-words text-xs text-zinc-500">Updated · Actualizado: {it.updatedAt}</div>
                     )}
                   </div>
 
