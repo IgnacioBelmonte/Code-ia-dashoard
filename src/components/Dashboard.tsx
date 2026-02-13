@@ -17,7 +17,21 @@ type BoardItem = {
   [k: string]: unknown;
 };
 
+type BoardRuntime = {
+  main?: {
+    lanUrl?: string;
+    dbHostPort?: number;
+  };
+  dev?: {
+    lanUrl?: string;
+    tunnelUrl?: string;
+    spotifyRedirectUri?: string;
+    dbHostPort?: number;
+  };
+};
+
 type Board = {
+  runtime?: BoardRuntime;
   queue?: {
     backlog?: BoardItem[];
     inProgress?: BoardItem[];
@@ -89,6 +103,7 @@ export default function Dashboard() {
             <div className="mt-2 text-xs text-zinc-400">Updated: {counts.updatedAt || "(unknown)"}</div>
 
             <div className="mt-5 grid gap-4">
+              <RuntimeSection runtime={board.data.runtime} />
               <BoardSection title="In progress" items={board.data.queue?.inProgress} />
               <BoardSection title="Backlog" items={board.data.queue?.backlog} />
               <BoardSection title="Done" items={board.data.queue?.done} />
@@ -106,6 +121,105 @@ function Stat({ label, value }: { label: string; value: number }) {
       <div className="text-xs text-zinc-400">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
     </div>
+  );
+}
+
+function RuntimeSection({ runtime }: { runtime?: BoardRuntime }) {
+  const mainLan = runtime?.main?.lanUrl;
+  const devLan = runtime?.dev?.lanUrl;
+  const devTunnel = runtime?.dev?.tunnelUrl;
+  const devRedirect = runtime?.dev?.spotifyRedirectUri;
+  const mainDbPort = runtime?.main?.dbHostPort;
+  const devDbPort = runtime?.dev?.dbHostPort;
+
+  if (!mainLan && !devLan && !devTunnel && !devRedirect) return null;
+
+  return (
+    <section className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-zinc-100">Runtime URLs</h3>
+      </div>
+
+      <div className="mt-3 grid gap-4 lg:grid-cols-2">
+        <RuntimeCard
+          title="MAIN"
+          items={[
+            { label: "LAN", value: mainLan },
+            { label: "DB", value: mainDbPort ? `:${mainDbPort}` : undefined },
+          ]}
+        />
+        <RuntimeCard
+          title="DEV"
+          items={[
+            { label: "LAN", value: devLan },
+            { label: "Tunnel", value: devTunnel },
+            { label: "Spotify redirect", value: devRedirect },
+            { label: "DB", value: devDbPort ? `:${devDbPort}` : undefined },
+          ]}
+        />
+      </div>
+
+      <p className="mt-3 text-xs text-zinc-500">
+        Tip: the DEV tunnel is temporary (trycloudflare). If it changes, update the Spotify redirect URI.
+      </p>
+    </section>
+  );
+}
+
+function RuntimeCard({
+  title,
+  items,
+}: {
+  title: string;
+  items: { label: string; value?: string }[];
+}) {
+  const visible = items.filter((it) => typeof it.value === "string" && it.value.length > 0);
+
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
+      <div className="text-xs font-semibold tracking-wide text-zinc-300">{title}</div>
+
+      {visible.length === 0 ? (
+        <p className="mt-2 text-sm text-zinc-400">No data.</p>
+      ) : (
+        <ul className="mt-3 grid gap-2">
+          {visible.map((it) => (
+            <li key={`${title}-${it.label}`} className="grid gap-1">
+              <div className="text-xs text-zinc-500">{it.label}</div>
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded bg-zinc-900 px-2 py-1 text-xs text-zinc-100">
+                  {it.value}
+                </code>
+                <CopyButton value={it.value!} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1200);
+        } catch {
+          // ignore
+        }
+      }}
+      className="shrink-0 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800"
+      aria-label="Copy to clipboard"
+    >
+      {copied ? "Copied" : "Copy"}
+    </button>
   );
 }
 
