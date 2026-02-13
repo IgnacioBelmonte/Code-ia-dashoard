@@ -8,7 +8,11 @@ export async function GET() {
   try {
     // We rely on the local OpenClaw CLI status output for a simple, LAN-only dashboard.
     // If JSON output is not supported, we fall back to plain text.
-    const { stdout } = await execFileAsync("openclaw", ["status"], { timeout: 20_000 });
+    const cmd = process.env.OPENCLAW_BIN || "/home/nacho/.npm-global/bin/openclaw";
+    const { stdout } = await execFileAsync(cmd, ["status"], {
+      timeout: 20_000,
+      env: { ...process.env, PATH: `${process.env.PATH || ""}:/home/nacho/.npm-global/bin` },
+    });
     return NextResponse.json(
       { ok: true, data: { raw: stdout } },
       { headers: { "Cache-Control": "no-store" } }
