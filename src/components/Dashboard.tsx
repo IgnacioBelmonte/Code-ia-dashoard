@@ -49,7 +49,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState<TabKey>("inProgress");
 
   async function load() {
-    setBoard((prev) => ({ status: "loading", data: prev.status === "ok" ? prev.data : undefined }));
+    setBoard({ status: "loading" });
 
     try {
       const r = await fetch("/api/board", { cache: "no-store" });
