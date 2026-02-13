@@ -80,7 +80,7 @@ export default function Dashboard() {
 
         {board.status === "ok" && counts && (
           <div className="mt-4">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Stat label="Backlog" value={counts.backlog} />
               <Stat label="In progress" value={counts.inProgress} />
               <Stat label="Done" value={counts.done} />
@@ -114,9 +114,9 @@ function BoardSection({ title, items }: { title: string; items?: BoardItem[] }) 
 
   return (
     <section className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-zinc-100">{title}</h3>
-        <span className="text-xs tabular-nums text-zinc-400">{list.length}</span>
+        <span className="shrink-0 text-xs tabular-nums text-zinc-400">{list.length}</span>
       </div>
 
       {list.length === 0 ? (
@@ -127,7 +127,7 @@ function BoardSection({ title, items }: { title: string; items?: BoardItem[] }) 
             const key = `${it.ticketId || "item"}-${idx}`;
             return (
               <li key={key} className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-zinc-200">
@@ -145,11 +145,13 @@ function BoardSection({ title, items }: { title: string; items?: BoardItem[] }) 
                       )}
                     </div>
 
-                    <div className="mt-1 truncate text-sm text-zinc-100">
+                    <div className="mt-1 text-sm text-zinc-100 sm:text-[15px]">
                       {it.title || "(no title)"}
                     </div>
 
-                    {it.updatedAt && <div className="mt-1 text-xs text-zinc-500">Updated: {it.updatedAt}</div>}
+                    {it.updatedAt && (
+                      <div className="mt-1 break-words text-xs text-zinc-500">Updated: {it.updatedAt}</div>
+                    )}
                   </div>
 
                   {typeof it.prUrl === "string" && it.prUrl.length > 0 && (
@@ -157,7 +159,7 @@ function BoardSection({ title, items }: { title: string; items?: BoardItem[] }) 
                       href={it.prUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="shrink-0 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800"
+                      className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-center text-xs text-zinc-200 hover:bg-zinc-800 sm:w-auto sm:px-3 sm:py-1.5"
                     >
                       PR
                     </a>
