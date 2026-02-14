@@ -1,0 +1,13 @@
+services:
+  app:
+    image: ${CODE_IA_IMAGE:-code-ia-dashboard-app}
+    restart: unless-stopped
+    ports:
+      - "4000:3000"
+    environment:
+      # Used by the app API to read the local board file.
+      BOARD_PATH: ${BOARD_PATH}
+
+      # Visible build info if needed
+      APP_GIT_SHA: ${APP_GIT_SHA:-}
+      APP_IMAGE_TAG: ${APP_IMAGE_TAG:-}
