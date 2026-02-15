@@ -19,8 +19,11 @@ cd "$REPO_DIR"
 export CODE_IA_IMAGE="$IMAGE"
 export APP_IMAGE_TAG="$TAG"
 
-# BOARD_PATH is required and must exist on the Pi.
-: "${BOARD_PATH:?BOARD_PATH must be set}"
+# Ensure registry exists on the Pi (mounted by compose)
+if [[ ! -f "/home/nacho/.openclaw/state/projects.registry.json" ]]; then
+  echo "Registry not found at /home/nacho/.openclaw/state/projects.registry.json" >&2
+  exit 1
+fi
 
 sudo -E docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" pull app
 sudo -E docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d --force-recreate app

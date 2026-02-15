@@ -74,8 +74,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy dev-${{ github.sha }}
-        env:
-          BOARD_PATH: /home/nacho/.openclaw/state/spotify-insights-board.json
         run: |
           chmod +x scripts/deploy-dev-from-ghcr.sh
           bash scripts/deploy-dev-from-ghcr.sh "dev-${{ github.sha }}"

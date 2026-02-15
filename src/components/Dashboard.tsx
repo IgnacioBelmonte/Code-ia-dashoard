@@ -7,6 +7,15 @@ type ApiState<T> =
   | { status: "ok"; data: T; error?: undefined }
   | { status: "error"; data?: undefined; error: string };
 
+type RegistryProject = {
+  id: string;
+  name?: string;
+};
+
+type Registry = {
+  projects?: RegistryProject[];
+};
+
 type BoardItem = {
   ticketId?: string;
   role?: "techlead" | "backend" | "frontend" | "qa" | string;
@@ -31,6 +40,8 @@ type BoardRuntime = {
 };
 
 type Board = {
+  projectId?: string;
+  project?: string;
   runtime?: BoardRuntime;
   queue?: {
     backlog?: BoardItem[];
@@ -45,14 +56,31 @@ type Board = {
 type TabKey = "runtime" | "inProgress" | "backlog" | "done";
 
 export default function Dashboard() {
+  const [registry, setRegistry] = useState<ApiState<Registry>>({ status: "idle" });
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [board, setBoard] = useState<ApiState<Board>>({ status: "idle" });
   const [tab, setTab] = useState<TabKey>("inProgress");
 
-  async function load() {
+  async function loadRegistry() {
+    setRegistry({ status: "loading" });
+    try {
+      const r = await fetch("/api/projects", { cache: "no-store" });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j?.error?.message || "Registry fetch failed");
+      setRegistry({ status: "ok", data: j.data });
+      const first = j.data?.projects?.[0]?.id;
+      setProjectId((prev) => prev ?? first ?? null);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      setRegistry({ status: "error", error: message });
+    }
+  }
+
+  async function loadBoard(selectedProjectId: string) {
     setBoard({ status: "loading" });
 
     try {
-      const r = await fetch("/api/board", { cache: "no-store" });
+      const r = await fetch(`/api/projects/${selectedProjectId}/board`, { cache: "no-store" });
       const j = await r.json();
       if (!j.ok) throw new Error(j?.error?.message || "Board fetch failed");
       setBoard({ status: "ok", data: j.data });
@@ -63,10 +91,15 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 15_000);
-    return () => clearInterval(t);
+    loadRegistry();
   }, []);
+
+  useEffect(() => {
+    if (!projectId) return;
+    loadBoard(projectId);
+    const t = setInterval(() => loadBoard(projectId), 15_000);
+    return () => clearInterval(t);
+  }, [projectId]);
 
   const counts = useMemo(() => {
     if (board.status !== "ok") return null;
@@ -84,15 +117,40 @@ export default function Dashboard() {
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 sm:p-5">
         <div className="sticky top-2 z-10 -mx-2 mb-4 rounded-lg border border-zinc-800 bg-zinc-950/90 px-2 py-2 backdrop-blur sm:mx-0 sm:px-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold sm:text-lg">Board · Tablero</h2>
-            <button
-              onClick={load}
-              className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs hover:bg-zinc-800 sm:text-sm"
-            >
-              Refresh · Actualizar
-            </button>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold sm:text-lg">Board · Tablero</h2>
+              <p className="mt-1 text-xs text-zinc-400">Auto-refresh cada 15s · Carga ligera para Raspberry Pi</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={projectId ?? ""}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="max-w-[46vw] truncate rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 sm:max-w-none sm:text-sm"
+                aria-label="Project"
+              >
+                {(registry.status === "ok" ? registry.data.projects || [] : []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name ?? p.id}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => {
+                  loadRegistry();
+                  if (projectId) loadBoard(projectId);
+                }}
+                className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs hover:bg-zinc-800 sm:text-sm"
+              >
+                Refresh · Actualizar
+              </button>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-zinc-400">Auto-refresh cada 15s · Carga ligera para Raspberry Pi</p>
+
+          {registry.status === "error" ? (
+            <p className="mt-2 text-xs text-red-300">Registry error: {registry.error}</p>
+          ) : null}
         </div>
 
         {board.status === "loading" && <LoadingSkeleton />}

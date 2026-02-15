@@ -5,9 +5,13 @@ services:
     ports:
       - "4000:3000"
     environment:
-      # Used by the app API to read the local board file.
-      BOARD_PATH: ${BOARD_PATH}
+      # Projects registry + boards (mounted read-only)
+      PROJECTS_REGISTRY_PATH: /data/projects.registry.json
 
       # Visible build info if needed
       APP_GIT_SHA: ${APP_GIT_SHA:-}
       APP_IMAGE_TAG: ${APP_IMAGE_TAG:-}
+
+    volumes:
+      - /home/nacho/.openclaw/state/projects.registry.json:/data/projects.registry.json:ro
+      - /home/nacho/.openclaw/state/projects:/data/projects:ro
