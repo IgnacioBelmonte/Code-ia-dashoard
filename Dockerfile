@@ -8,8 +8,13 @@ RUN apt-get update -y \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
-RUN npm i -g npm@10.9.4 \
-  && (npm ci || npm i)
+# Avoid npm self-update during image build (network flake risk). Retry install a few times.
+RUN set -eux; \
+  if [ -f package-lock.json ]; then \
+    for i in 1 2 3; do npm ci && break || (echo "npm ci failed (attempt $i), retrying..."; sleep 5); done; \
+  else \
+    for i in 1 2 3; do npm i && break || (echo "npm i failed (attempt $i), retrying..."; sleep 5); done; \
+  fi
 
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
